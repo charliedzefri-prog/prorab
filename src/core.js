@@ -43,7 +43,7 @@ const DEFAULT_SETTINGS = {
 };
 function freshDB() {
   return {
-    v: 1, settings: clone(DEFAULT_SETTINGS), journal: [], objects: [], smetas: [], clients: [],
+    v: 1, priceVer: 2, settings: clone(DEFAULT_SETTINGS), journal: [], objects: [], smetas: [], clients: [],
     finLists: [], finEntries: [], notes: [], files: [], calcHistory: [],
     jobPrice: JOB_PRICE.map(r => ({ id: uid(), sec: r[0], name: r[1], unit: r[2], price: r[3] })),
     matPrice: MAT_PRICE.map(r => ({ id: uid(), sec: r[0], name: r[1], unit: r[2], price: r[3] })),
@@ -57,10 +57,17 @@ function loadDB() {
     const raw = localStorage.getItem(STORE_KEY);
     DB = raw ? JSON.parse(raw) : freshDB();
   } catch (e) { STORAGE_OK = false; DB = freshDB(); }
+  const oldPriceVer = DB.priceVer || 1;
   const f = freshDB();
   for (const k in f) if (DB[k] === undefined) DB[k] = f[k];
   DB.settings = Object.assign(clone(DEFAULT_SETTINGS), DB.settings || {});
   DB.settings.contractor = Object.assign(clone(DEFAULT_SETTINGS.contractor), DB.settings.contractor || {});
+  // v2: в прайсе работ оставлены только разделы Демонтаж, Электрика, Прочие работы
+  if (oldPriceVer < 2) {
+    const removed = ['ОТДЕЛКА ПОЛОВ', 'ОТДЕЛКА ПОТОЛКОВ', 'ОТДЕЛКА ПРОЁМОВ', 'ОТДЕЛКА СТЕН', 'ПЛИТКА', 'САНТЕХНИКА'];
+    DB.jobPrice = DB.jobPrice.filter(p => !removed.includes(p.sec));
+    DB.priceVer = 2; try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); } catch (e) { }
+  }
 }
 let saveTimer = null;
 function save() {
